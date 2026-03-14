@@ -20,7 +20,7 @@ Thank you for your interest in contributing. This document covers how to get sta
 ### Build
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/autolang
+git clone https://github.com/Kyeong6/autolang
 cd autolang
 go build ./...
 ```

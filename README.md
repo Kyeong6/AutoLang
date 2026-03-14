@@ -4,8 +4,8 @@
 
 **Write in Korean. Get English-quality AI responses.**
 
-[![CI](https://github.com/YOUR_USERNAME/autolang/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/autolang/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/YOUR_USERNAME/autolang)](https://github.com/YOUR_USERNAME/autolang/releases)
+[![CI](https://github.com/Kyeong6/autolang/actions/workflows/ci.yml/badge.svg)](https://github.com/Kyeong6/autolang/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Kyeong6/autolang)](https://github.com/Kyeong6/autolang/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](#installation)
 
@@ -69,25 +69,25 @@ $ claude "이 함수의 시간 복잡도를 O(n log n)으로 줄여줘"
 ### Homebrew (recommended)
 
 ```bash
-brew tap YOUR_USERNAME/tap
+brew tap Kyeong6/tap
 brew install autolang
 ```
 
 ### curl (Linux / quick install)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/autolang/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Kyeong6/autolang/main/install.sh | sh
 ```
 
 ### go install
 
 ```bash
-go install github.com/YOUR_USERNAME/autolang@latest
+go install github.com/Kyeong6/autolang@latest
 ```
 
 ### Manual
 
-Download the binary for your platform from [Releases](https://github.com/YOUR_USERNAME/autolang/releases).
+Download the binary for your platform from [Releases](https://github.com/Kyeong6/autolang/releases).
 
 ---
 
@@ -260,7 +260,7 @@ The proxy is set via `ANTHROPIC_BASE_URL=http://localhost:7878` — Claude Code 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/autolang
+git clone https://github.com/Kyeong6/autolang
 cd autolang
 cargo build
 cargo test

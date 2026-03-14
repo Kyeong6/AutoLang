@@ -47,10 +47,10 @@ changelog:
 brews:
   - name: autolang
     repository:
-      owner: YOUR_USERNAME
+      owner: Kyeong6
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    homepage: "https://github.com/YOUR_USERNAME/autolang"
+    homepage: "https://github.com/Kyeong6/autolang"
     description: "Write in Korean. Get English-quality AI responses."
     license: "MIT"
     install: |
