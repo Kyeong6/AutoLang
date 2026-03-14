@@ -16,16 +16,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if Go source exists
+        id: check
+        run: |
+          if [ -f "go.mod" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up Go
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
           cache: true
 
       - name: Build
+        if: steps.check.outputs.exists == 'true'
         run: go build ./...
 
       - name: Test
+        if: steps.check.outputs.exists == 'true'
         run: go test ./...
 
   lint:
@@ -34,13 +46,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check if Go source exists
+        id: check
+        run: |
+          if [ -f "go.mod" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Set up Go
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
           cache: true
 
       - name: golangci-lint
+        if: steps.check.outputs.exists == 'true'
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
