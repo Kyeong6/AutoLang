@@ -1,79 +1,79 @@
 <div align="center">
 
-# AutoLang
+<h1>AutoLang</h1>
 
-**Write in Korean. Get English-quality AI responses.**
+<p>한국어로 작성하면, 영어로 쓴 것과 같은 AI 성능을.</p>
 
 [![CI](https://github.com/Kyeong6/autolang/actions/workflows/ci.yml/badge.svg)](https://github.com/Kyeong6/autolang/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Kyeong6/autolang)](https://github.com/Kyeong6/autolang/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go)](https://go.dev)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](#installation)
 
 </div>
 
 ---
 
-LLMs are trained on English. Korean uses **2–3× more tokens** for the same content — meaning higher costs, shorter context windows, and lower response quality.
+LLM은 영어로 학습됩니다. 동일한 내용을 한국어로 작성하면 **2~3배 더 많은 토큰**을 소모하고, 응답 품질도 떨어집니다.
 
-**AutoLang** is a transparent local proxy that sits between your CLI and AI APIs. It automatically detects Korean input, translates it to English before sending, and returns responses in Korean — **with zero changes to your workflow**.
+AutoLang은 CLI와 AI API 사이에 투명하게 동작하는 **로컬 번역 프록시**입니다. 한국어 입력을 자동으로 영어로 변환해 AI에 전달하고, 응답을 한국어로 돌려줍니다. **기존 워크플로우는 그대로 유지됩니다.**
 
 ```
 $ claude "이 함수의 시간 복잡도를 O(n log n)으로 줄여줘"
 
-  ✦ [AutoLang] KO → EN  (tokens: 18 → 9, saved 50%)
+  ✦ AutoLang  KO → EN  (18 tokens → 9 tokens, 50% saved)
 
-  이 함수를 최적화하려면 이중 루프를 제거하고 정렬 기반 접근으로 바꾸세요.
+  이 함수를 최적화하려면 이중 루프를 정렬 기반 접근으로 교체하세요.
 
   def optimized(arr: list[int]) -> list[int]:
       arr.sort()
+      left, right = 0, len(arr) - 1
       ...
 
   이렇게 하면 O(n²) → O(n log n)으로 개선됩니다.
 ```
 
-> Demo GIF — coming soon
+<br>
 
----
+## 왜 AutoLang인가
 
-## Why AutoLang?
+| | AutoLang 없이 | AutoLang 사용 |
+|---|---|---|
+| 입력 | 영어로 직접 작성하거나 번역 후 붙여넣기 | 한국어로 그대로 작성 |
+| 토큰 사용량 | 한국어: 영어 대비 2~3배 소모 | 영어 수준의 토큰 효율 |
+| 응답 품질 | 한국어 입력 시 저하됨 | 영어 입력과 동일한 품질 |
+| 워크플로우 | 번역 앱과 터미널 사이 컨텍스트 스위칭 | 터미널을 벗어나지 않음 |
 
-| | Without AutoLang | With AutoLang |
-|-|-----------------|---------------|
-| Input language | Must write in English | Write in Korean |
-| Token usage | 2–3× more tokens for Korean | English-level token efficiency |
-| Response quality | Degraded for non-English | Full English-model quality |
-| Workflow | Context switch to translator | Stay in the terminal |
+**토큰 절약 효과** (Claude Sonnet, 1,000단어 기준)
 
-**Token savings example** (Claude Sonnet, 1,000 words):
+| | 한국어 | 영어 | 절감 |
+|---|---|---|---|
+| 토큰 수 | ~2,800 | ~1,300 | **53%** |
+| 비용 ($3/1M 기준) | $0.0084 | $0.0039 | **$0.0045 / 메시지** |
 
-| | Korean | English | Savings |
-|-|--------|---------|---------|
-| Token count | ~2,800 | ~1,300 | **53%** |
-| Cost (at $3/1M) | $0.0084 | $0.0039 | **$0.0045/msg** |
+<br>
 
----
+## 기능
 
-## Features
+- **투명한 프록시** — `claude` 사용 방식을 전혀 바꾸지 않아도 됨
+- **자동 언어 감지** — 한국어 입력만 번역, 영어는 그대로 통과
+- **코드 블록 보호** — 코드, URL, 파일 경로는 번역하지 않음
+- **BYOK** — 원하는 번역 API 키를 직접 연결 (DeepL, OpenAI, Google)
+- **토큰 절약 리포트** — 세션별 절약량 확인
+- **단일 바이너리** — 런타임 의존성 없음
 
-- **Transparent proxy** — no changes to how you use `claude` or other AI CLIs
-- **Korean detection** — automatically detects Korean input; passes English through unchanged
-- **Code block protection** — code, file paths, and variable names are never translated
-- **BYOK** — bring your own translation API key (DeepL, OpenAI, etc.)
-- **Token savings report** — see how many tokens you saved per session
-- **Single binary** — no runtime dependencies, fast startup
+<br>
 
----
+## 설치
 
-## Installation
-
-### Homebrew (recommended)
+### Homebrew (권장)
 
 ```bash
 brew tap Kyeong6/tap
 brew install autolang
 ```
 
-### curl (Linux / quick install)
+### curl
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Kyeong6/autolang/main/install.sh | sh
@@ -85,75 +85,67 @@ curl -fsSL https://raw.githubusercontent.com/Kyeong6/autolang/main/install.sh | 
 go install github.com/Kyeong6/autolang@latest
 ```
 
-### Manual
+바이너리 직접 다운로드: [Releases](https://github.com/Kyeong6/autolang/releases)
 
-Download the binary for your platform from [Releases](https://github.com/Kyeong6/autolang/releases).
+<br>
 
----
-
-## Setup
+## 시작하기
 
 ```bash
-# 1. Set your translation API key (required)
-export AUTOLANG_API_KEY="your-deepl-or-openai-key"
-export AUTOLANG_PROVIDER="deepl"   # deepl | openai | google (default: deepl)
+# 1. 번역 API 키 설정
+export AUTOLANG_PROVIDER=deepl       # deepl | openai | google
+export AUTOLANG_API_KEY=your-api-key
 
-# 2. Add AutoLang to your shell (one-time setup)
+# 2. Shell 통합 (최초 1회)
 echo 'eval "$(autolang init)"' >> ~/.zshrc
 source ~/.zshrc
 
-# 3. That's it — use Claude Code as usual
-claude "이 코드 리뷰해줘"
+# 3. 평소처럼 사용하면 됩니다
+claude "인증 미들웨어 JWT 기반으로 구현해줘"
 ```
 
-**Shell init** automatically:
-- Starts the AutoLang proxy in the background
-- Sets `ANTHROPIC_BASE_URL` to point to the local proxy
-- Restarts the proxy if it's not running
+`autolang init`은 터미널을 열 때마다 프록시를 자동으로 백그라운드에서 시작하고, `ANTHROPIC_BASE_URL`을 자동으로 설정합니다.
 
----
+<br>
 
-## Usage
-
-No new commands. Use your AI CLI tools exactly as before.
+## 사용법
 
 ```bash
-# Korean input → translated to English → response returned in Korean
-claude "인증 미들웨어 구현해줘, JWT 기반으로"
+# 한국어 입력 → 영어로 번역 → Claude에 전달 → 한국어로 응답
+claude "리팩토링할 때 고려해야 할 점이 뭐야?"
 
-# English input → passed through unchanged
-claude "implement a JWT authentication middleware"
+# 영어 입력 → 번역 없이 그대로 전달
+claude "what should I consider when refactoring?"
 
-# View session token savings
+# 프록시 상태 확인
+autolang status
+
+# 세션 토큰 절약 통계
 autolang stats
 
-# Toggle Korean output off for current session
+# 현재 세션에서 번역 끄기
 autolang off
-
-# Check proxy status
-autolang status
 ```
 
----
+<br>
 
-## Configuration
+## 설정
 
-AutoLang is configured via `~/.autolang/config.toml`:
+`~/.autolang/config.toml`로 동작을 커스터마이즈할 수 있습니다.
 
 ```toml
 [translation]
-provider = "deepl"        # deepl | openai | google | libretranslate
+provider = "deepl"         # deepl | openai | google | libretranslate
 source_lang = "ko"
 target_lang = "en"
 
 [proxy]
 port = 7878
-log_level = "info"        # info | debug | off
+log_level = "info"         # info | debug | off
 
 [output]
 show_token_savings = true
-show_translation_indicator = true
-response_lang = "ko"      # ko | en (language for AI responses)
+response_lang = "ko"       # ko | en
 
 [rules]
 skip_code_blocks = true
@@ -161,121 +153,56 @@ skip_urls = true
 skip_file_paths = true
 ```
 
-Override any option with CLI flags:
+<br>
+
+## 번역 Provider
+
+| Provider | 키 필요 | 무료 한도 | 품질 | 비고 |
+|---|---|---|---|---|
+| **DeepL** | 필요 | 500K chars/월 | ★★★★★ | 권장 |
+| **OpenAI** | 필요 | 없음 | ★★★★☆ | OpenAI 키 보유 시 |
+| **Google** | 필요 | 500K chars/월 | ★★★★☆ | |
+| LibreTranslate | 불필요 | 제한 있음 | ★★★☆☆ | 테스트용 |
 
 ```bash
-claude --autolang-off "no translation for this message"
-```
-
----
-
-## Translation Providers
-
-AutoLang supports multiple translation backends via `AUTOLANG_PROVIDER`:
-
-| Provider | Key Required | Free Tier | Quality | Best For |
-|----------|-------------|-----------|---------|----------|
-| **DeepL** | Yes | 500K chars/month | ★★★★★ | Best quality (recommended) |
-| **OpenAI** | Yes | No | ★★★★☆ | Already have OpenAI key |
-| **Google** | Yes | 500K chars/month | ★★★★☆ | Multi-language |
-| LibreTranslate | No | Unlimited* | ★★★☆☆ | No key, testing |
-
-\* Public instance has rate limits. Self-host for unlimited usage.
-
-**Setting your provider:**
-
-```bash
-# DeepL (recommended)
 export AUTOLANG_PROVIDER=deepl
 export AUTOLANG_API_KEY=your-deepl-free-key
-
-# OpenAI (if you already have a key)
-export AUTOLANG_PROVIDER=openai
-export AUTOLANG_API_KEY=your-openai-key
-
-# No key (free, lower quality)
-export AUTOLANG_PROVIDER=libretranslate
 ```
 
----
+> DeepL Free 키는 [deepl.com/pro-api](https://www.deepl.com/pro-api)에서 무료로 발급받을 수 있습니다.
 
-## Supported AI CLIs
+<br>
 
-| Tool | Environment Variable | Status |
-|------|---------------------|--------|
-| [Claude Code](https://github.com/anthropics/claude-code) | `ANTHROPIC_BASE_URL` | ✅ Supported |
-| OpenAI CLI | `OPENAI_BASE_URL` | 🔜 Coming in v0.2 |
-| [Aider](https://github.com/paul-gauthier/aider) | `OPENAI_API_BASE` | 🔜 Coming in v0.2 |
-| Any OpenAI-compatible API | Custom base URL | 🔜 Coming in v0.2 |
+## 지원 CLI
 
----
+| 도구 | 환경변수 | 상태 |
+|---|---|---|
+| [Claude Code](https://github.com/anthropics/claude-code) | `ANTHROPIC_BASE_URL` | ✅ v0.1 |
+| OpenAI CLI / Aider | `OPENAI_BASE_URL` | 🔜 v0.2 |
+| Gemini CLI | `GOOGLE_AI_BASE_URL` | 🔜 v0.2 |
+| OpenAI 호환 API | Custom base URL | 🔜 v0.2 |
 
-## How It Works
+<br>
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    Your Terminal                      │
-│                                                       │
-│  claude "한글 입력"                                   │
-│       │                                               │
-│       ▼                                               │
-│  AutoLang Proxy (localhost:7878)                      │
-│       │                                               │
-│   [1] Korean detected                                 │
-│   [2] Translate KO → EN via API                       │
-│   [3] Forward English request to Claude API           │
-│       │                                               │
-│       ▼                                               │
-│  Claude API (api.anthropic.com)                       │
-│       │                                               │
-│   [4] English response received                       │
-│   [5] Translate natural language EN → KO              │
-│   [6] Code blocks preserved as-is                     │
-│       │                                               │
-│       ▼                                               │
-│  Korean output in your terminal                       │
-└─────────────────────────────────────────────────────┘
-```
+## 기여
 
-The proxy is set via `ANTHROPIC_BASE_URL=http://localhost:7878` — Claude Code sends requests there, AutoLang handles the rest transparently.
-
----
-
-## Roadmap
-
-- [x] Claude Code support (v0.1)
-- [x] DeepL / OpenAI / Google translation backends
-- [x] Code block protection
-- [x] Token savings report
-- [ ] OpenAI / Aider / Gemini CLI support (v0.2)
-- [ ] Japanese and Chinese support (v0.3)
-- [ ] Streaming translation (word-by-word output)
-- [ ] Translation history and search
-- [ ] Homebrew core submission (at 75+ stars)
-
----
-
-## Contributing
-
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+기여는 언제나 환영입니다. 시작하기 전에 [CONTRIBUTING.md](CONTRIBUTING.md)를 읽어주세요.
 
 ```bash
 git clone https://github.com/Kyeong6/autolang
 cd autolang
-cargo build
-cargo test
+go build ./...
+go test ./...
 ```
 
----
+<br>
 
-## License
+## 라이선스
 
-MIT — see [LICENSE](LICENSE).
+MIT — [LICENSE](LICENSE)
 
 ---
 
 <div align="center">
-
-If AutoLang saves you tokens, a ⭐ helps others find it.
-
+AutoLang이 도움이 됐다면 ⭐을 눌러주세요. 더 많은 개발자에게 닿을 수 있습니다.
 </div>
