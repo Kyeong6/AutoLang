@@ -1,0 +1,209 @@
+package proxy
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"time"
+
+	"github.com/Kyeong6/autolang/internal/config"
+	"github.com/Kyeong6/autolang/internal/translate"
+)
+
+const anthropicBase = "https://api.anthropic.com"
+
+// Proxy is the local HTTP proxy server that intercepts Claude API requests,
+// applies Korean↔English translation, and forwards to the real Anthropic API.
+type Proxy struct {
+	cfg        *config.Config
+	translator translate.Translator
+	server     *http.Server
+	client     *http.Client
+	logger     *log.Logger
+}
+
+// New creates a Proxy. translator may be nil (passthrough mode until Task 05).
+func New(cfg *config.Config, t translate.Translator) *Proxy {
+	p := &Proxy{
+		cfg:        cfg,
+		translator: t,
+		client:     &http.Client{Timeout: 0}, // no timeout — streaming responses can be long
+		logger:     log.New(io.Discard, "[autolang] ", log.LstdFlags),
+	}
+
+	if cfg.Proxy.LogLevel != "off" {
+		p.logger.SetOutput(log.Writer())
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", p.handleHealth)
+	mux.HandleFunc("/v1/messages", p.handleMessages)
+	mux.HandleFunc("/", p.handlePassthrough)
+
+	p.server = &http.Server{
+		Addr:              fmt.Sprintf(":%d", cfg.Proxy.Port),
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	return p
+}
+
+// Start starts the proxy and blocks until Stop is called or an error occurs.
+func (p *Proxy) Start() error {
+	ln, err := net.Listen("tcp", p.server.Addr)
+	if err != nil {
+		return fmt.Errorf("failed to bind %s: %w", p.server.Addr, err)
+	}
+	p.logger.Printf("proxy listening on %s", p.server.Addr)
+	return p.server.Serve(ln)
+}
+
+// Stop gracefully shuts down the proxy server.
+func (p *Proxy) Stop() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return p.server.Shutdown(ctx)
+}
+
+// handleHealth responds to liveness checks from `autolang status`.
+func (p *Proxy) handleHealth(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"status":"ok","port":%d}`, p.cfg.Proxy.Port)
+}
+
+// handleMessages intercepts POST /v1/messages, applies translation, and forwards.
+func (p *Proxy) handleMessages(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "cannot read request body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var req MessagesRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	// --- translation hook (Task 03 / 04 / 05 will populate this) ---
+	if p.translator != nil {
+		if err := p.translateRequest(r.Context(), &req); err != nil {
+			p.logger.Printf("translation error: %v", err)
+			// fall through — send original on translation failure
+		}
+	}
+	// ----------------------------------------------------------------
+
+	translated, err := json.Marshal(req)
+	if err != nil {
+		http.Error(w, "cannot marshal request", http.StatusInternalServerError)
+		return
+	}
+
+	p.forward(w, r, translated, req.Stream)
+}
+
+// handlePassthrough transparently forwards any other Anthropic API endpoints.
+func (p *Proxy) handlePassthrough(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+	p.forward(w, r, body, false)
+}
+
+// forward sends body to the real Anthropic API and relays the response.
+// When stream is true it flushes incrementally so SSE reaches the client in real time.
+func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, body []byte, stream bool) {
+	upstream := anthropicBase + r.URL.Path
+	if r.URL.RawQuery != "" {
+		upstream += "?" + r.URL.RawQuery
+	}
+
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, upstream, bytes.NewReader(body))
+	if err != nil {
+		http.Error(w, "cannot build upstream request", http.StatusInternalServerError)
+		return
+	}
+
+	// Forward all original headers (auth key, anthropic-version, beta flags, etc.)
+	for key, vals := range r.Header {
+		for _, v := range vals {
+			req.Header.Add(key, v)
+		}
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		p.logger.Printf("upstream error: %v", err)
+		http.Error(w, "upstream request failed: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Relay response headers
+	for key, vals := range resp.Header {
+		for _, v := range vals {
+			w.Header().Add(key, v)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+
+	if stream {
+		p.relayStream(w, resp.Body)
+	} else {
+		io.Copy(w, resp.Body) //nolint:errcheck
+	}
+}
+
+// relayStream copies an SSE response body to the client, flushing after each chunk.
+// Task 06 will extend this to translate the streamed text before flushing.
+func (p *Proxy) relayStream(w http.ResponseWriter, body io.Reader) {
+	flusher, canFlush := w.(http.Flusher)
+	buf := make([]byte, 4096)
+	for {
+		n, err := body.Read(buf)
+		if n > 0 {
+			w.Write(buf[:n]) //nolint:errcheck
+			if canFlush {
+				flusher.Flush()
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+}
+
+// translateRequest applies Korean detection and translation to all user messages.
+// Placeholder — detection and protection logic is wired in Task 03/04/05.
+func (p *Proxy) translateRequest(ctx context.Context, req *MessagesRequest) error {
+	cfg := p.cfg.Translation
+	for i := range req.Messages {
+		msg := &req.Messages[i]
+		if msg.Role != "user" {
+			continue
+		}
+		if text, ok := msg.ContentAsString(); ok {
+			translated, err := p.translator.Translate(ctx, text, cfg.SourceLang, cfg.TargetLang)
+			if err != nil {
+				return err
+			}
+			if err := msg.SetContentString(translated); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
