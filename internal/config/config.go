@@ -1,5 +1,7 @@
 package config
 
+import "os"
+
 // Config holds all AutoLang configuration.
 // Implementation: Task 07
 type Config struct {
@@ -57,9 +59,24 @@ func Default() *Config {
 	}
 }
 
-// Load reads config from ~/.autolang/config.toml.
-// Falls back to Default() if the file does not exist.
-// Implementation: Task 07
+// Load reads config from ~/.autolang/config.toml, then applies environment
+// variable overrides. Falls back to Default() if the file does not exist.
+// Full config file parsing is implemented in Task 07.
 func Load() (*Config, error) {
-	return Default(), nil
+	cfg := Default()
+	applyEnvOverrides(cfg)
+	return cfg, nil
+}
+
+// applyEnvOverrides applies AUTOLANG_* environment variables over the config.
+func applyEnvOverrides(cfg *Config) {
+	if v := os.Getenv("AUTOLANG_PROVIDER"); v != "" {
+		cfg.Translation.Provider = v
+	}
+	if v := os.Getenv("AUTOLANG_API_KEY"); v != "" {
+		cfg.Translation.APIKey = v
+	}
+	if v := os.Getenv("AUTOLANG_LOG"); v != "" {
+		cfg.Proxy.LogLevel = v
+	}
 }

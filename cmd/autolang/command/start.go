@@ -11,6 +11,7 @@ import (
 
 	"github.com/Kyeong6/autolang/internal/config"
 	"github.com/Kyeong6/autolang/internal/proxy"
+	"github.com/Kyeong6/autolang/internal/translate"
 )
 
 func newStartCmd() *cobra.Command {
@@ -29,11 +30,20 @@ func newStartCmd() *cobra.Command {
 				return startDaemon(cfg)
 			}
 
+			tr, err := translate.New(cfg)
+			if err != nil {
+				fmt.Printf("⚠ Translation disabled: %v\n", err)
+				fmt.Println("  Set AUTOLANG_PROVIDER and AUTOLANG_API_KEY to enable translation.")
+				tr = nil
+			} else {
+				fmt.Printf("✓ Translation provider: %s\n", tr.Name())
+			}
+
 			fmt.Printf("AutoLang proxy starting on port %d\n", cfg.Proxy.Port)
 			fmt.Printf("Set: export ANTHROPIC_BASE_URL=http://localhost:%d\n", cfg.Proxy.Port)
 			fmt.Println("Press Ctrl+C to stop.")
 
-			p := proxy.New(cfg, nil) // translator wired in Task 05
+			p := proxy.New(cfg, tr)
 			return p.Start()
 		},
 	}

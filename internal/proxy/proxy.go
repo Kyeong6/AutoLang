@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/Kyeong6/autolang/internal/config"
+	"github.com/Kyeong6/autolang/internal/detect"
+	"github.com/Kyeong6/autolang/internal/protect"
 	"github.com/Kyeong6/autolang/internal/translate"
 )
 
@@ -186,8 +188,8 @@ func (p *Proxy) relayStream(w http.ResponseWriter, body io.Reader) {
 	}
 }
 
-// translateRequest applies Korean detection and translation to all user messages.
-// Placeholder — detection and protection logic is wired in Task 03/04/05.
+// translateRequest applies Korean detection, code-block protection, and translation
+// to all user messages in the request.
 func (p *Proxy) translateRequest(ctx context.Context, req *MessagesRequest) error {
 	cfg := p.cfg.Translation
 	for i := range req.Messages {
@@ -195,14 +197,33 @@ func (p *Proxy) translateRequest(ctx context.Context, req *MessagesRequest) erro
 		if msg.Role != "user" {
 			continue
 		}
-		if text, ok := msg.ContentAsString(); ok {
-			translated, err := p.translator.Translate(ctx, text, cfg.SourceLang, cfg.TargetLang)
-			if err != nil {
-				return err
-			}
-			if err := msg.SetContentString(translated); err != nil {
-				return err
-			}
+		text, ok := msg.ContentAsString()
+		if !ok {
+			continue
+		}
+
+		// Skip messages that don't need translation
+		if !detect.ShouldTranslate(text) {
+			continue
+		}
+
+		// Extract code blocks, URLs, file paths before translating
+		sanitised, protector := protect.Protect(text)
+
+		translated, err := p.translator.Translate(ctx, sanitised, cfg.SourceLang, cfg.TargetLang)
+		if err != nil {
+			return err
+		}
+
+		// Restore protected regions in the translated text
+		restored := protector.Restore(translated)
+
+		if err := msg.SetContentString(restored); err != nil {
+			return err
+		}
+
+		if p.cfg.Output.ShowTranslationIndicator {
+			p.logger.Printf("KO → EN  (%d chars → %d chars)", len(text), len(restored))
 		}
 	}
 	return nil
