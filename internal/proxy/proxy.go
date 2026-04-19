@@ -163,15 +163,21 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, body []byte, str
 	w.WriteHeader(resp.StatusCode)
 
 	if stream {
-		p.relayStream(w, resp.Body)
+		p.relayStream(r.Context(), w, resp.Body)
 	} else {
 		io.Copy(w, resp.Body) //nolint:errcheck
 	}
 }
 
-// relayStream copies an SSE response body to the client, flushing after each chunk.
-// Task 06 will extend this to translate the streamed text before flushing.
-func (p *Proxy) relayStream(w http.ResponseWriter, body io.Reader) {
+// relayStream copies an SSE response body to the client.
+// When a translator is configured, text is translated sentence-by-sentence (en→ko).
+func (p *Proxy) relayStream(ctx context.Context, w http.ResponseWriter, body io.Reader) {
+	if p.translator != nil {
+		st := NewStreamTranslator(ctx, w, p.translator, p.cfg.Translation, p.logger)
+		st.Relay(body)
+		return
+	}
+
 	flusher, canFlush := w.(http.Flusher)
 	buf := make([]byte, 4096)
 	for {
