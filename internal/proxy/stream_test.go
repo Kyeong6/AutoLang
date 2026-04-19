@@ -24,7 +24,7 @@ func (e *echoTranslator) Translate(_ context.Context, text, _, _ string) (string
 
 func newTestStreamTranslator(w *httptest.ResponseRecorder) *StreamTranslator {
 	cfg := config.TranslationConfig{SourceLang: "ko", TargetLang: "en"}
-	return NewStreamTranslator(context.Background(), w, &echoTranslator{}, cfg, log.New(io.Discard, "", 0))
+	return NewStreamTranslator(context.Background(), w, &echoTranslator{}, cfg, nil, log.New(io.Discard, "", 0))
 }
 
 func TestStreamTranslator_PassThroughNonDataLines(t *testing.T) {

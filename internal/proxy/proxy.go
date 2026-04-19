@@ -9,11 +9,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/Kyeong6/autolang/internal/config"
 	"github.com/Kyeong6/autolang/internal/detect"
 	"github.com/Kyeong6/autolang/internal/protect"
+	"github.com/Kyeong6/autolang/internal/stats"
 	"github.com/Kyeong6/autolang/internal/translate"
 )
 
@@ -24,16 +26,18 @@ const anthropicBase = "https://api.anthropic.com"
 type Proxy struct {
 	cfg        *config.Config
 	translator translate.Translator
+	stats      *stats.Stats
 	server     *http.Server
 	client     *http.Client
 	logger     *log.Logger
 }
 
-// New creates a Proxy. translator may be nil (passthrough mode until Task 05).
+// New creates a Proxy. translator may be nil (passthrough mode).
 func New(cfg *config.Config, t translate.Translator) *Proxy {
 	p := &Proxy{
 		cfg:        cfg,
 		translator: t,
+		stats:      stats.New(),
 		client:     &http.Client{Timeout: 0}, // no timeout — streaming responses can be long
 		logger:     log.New(io.Discard, "[autolang] ", log.LstdFlags),
 	}
@@ -44,6 +48,7 @@ func New(cfg *config.Config, t translate.Translator) *Proxy {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", p.handleHealth)
+	mux.HandleFunc("/stats", p.handleStats)
 	mux.HandleFunc("/v1/messages", p.handleMessages)
 	mux.HandleFunc("/", p.handlePassthrough)
 
@@ -77,6 +82,12 @@ func (p *Proxy) Stop() error {
 func (p *Proxy) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"status":"ok","port":%d}`, p.cfg.Proxy.Port)
+}
+
+// handleStats returns a plain-text session summary for `autolang stats`.
+func (p *Proxy) handleStats(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	fmt.Fprint(w, p.stats.Summary())
 }
 
 // handleMessages intercepts POST /v1/messages, applies translation, and forwards.
@@ -173,7 +184,7 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, body []byte, str
 // When a translator is configured, text is translated sentence-by-sentence (en→ko).
 func (p *Proxy) relayStream(ctx context.Context, w http.ResponseWriter, body io.Reader) {
 	if p.translator != nil {
-		st := NewStreamTranslator(ctx, w, p.translator, p.cfg.Translation, p.logger)
+		st := NewStreamTranslator(ctx, w, p.translator, p.cfg.Translation, p.stats, p.logger)
 		st.Relay(body)
 		return
 	}
@@ -228,8 +239,12 @@ func (p *Proxy) translateRequest(ctx context.Context, req *MessagesRequest) erro
 			return err
 		}
 
+		koTokens := stats.EstimateKorean(text)
+		enTokens := stats.EstimateEnglish(restored)
+		p.stats.RecordInput(text, restored)
+
 		if p.cfg.Output.ShowTranslationIndicator {
-			p.logger.Printf("KO → EN  (%d chars → %d chars)", len(text), len(restored))
+			fmt.Fprintln(os.Stderr, p.stats.Indicator(koTokens, enTokens))
 		}
 	}
 	return nil

@@ -30,6 +30,7 @@ archives:
       - README.md
       - LICENSE
       - CHANGELOG.md
+      - install.sh
 
 checksum:
   name_template: "checksums.txt"

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Kyeong6/autolang/internal/config"
+	"github.com/Kyeong6/autolang/internal/stats"
 	"github.com/Kyeong6/autolang/internal/translate"
 )
 
@@ -30,7 +31,9 @@ type StreamTranslator struct {
 	ctx         context.Context
 	translator  translate.Translator
 	cfg         config.TranslationConfig
+	stats       *stats.Stats
 	buffer      strings.Builder
+	rawBuffer   strings.Builder // original English text for stats
 	inCodeBlock bool
 	writer      http.ResponseWriter
 	flusher     http.Flusher
@@ -42,19 +45,21 @@ func NewStreamTranslator(
 	w http.ResponseWriter,
 	tr translate.Translator,
 	cfg config.TranslationConfig,
+	st *stats.Stats,
 	logger *log.Logger,
 ) *StreamTranslator {
-	st := &StreamTranslator{
+	s := &StreamTranslator{
 		ctx:        ctx,
 		translator: tr,
 		cfg:        cfg,
+		stats:      st,
 		writer:     w,
 		logger:     logger,
 	}
 	if f, ok := w.(http.Flusher); ok {
-		st.flusher = f
+		s.flusher = f
 	}
-	return st
+	return s
 }
 
 // Relay reads the SSE response body, translating text at sentence boundaries.
@@ -114,6 +119,7 @@ func (s *StreamTranslator) processText(text string) error {
 			s.writeTextDelta(text)
 		} else {
 			s.buffer.WriteString(text)
+			s.rawBuffer.WriteString(text)
 			return s.flushIfSentence()
 		}
 		return nil
@@ -130,6 +136,7 @@ func (s *StreamTranslator) processText(text string) error {
 			}
 		} else {
 			s.buffer.WriteString(part)
+			s.rawBuffer.WriteString(part)
 			if err := s.flushIfSentence(); err != nil {
 				return err
 			}
@@ -164,6 +171,8 @@ func (s *StreamTranslator) Flush() error {
 		return nil
 	}
 	s.buffer.Reset()
+	raw := s.rawBuffer.String()
+	s.rawBuffer.Reset()
 
 	// Response direction: TargetLang (en) → SourceLang (ko)
 	translated, err := s.translator.Translate(s.ctx, text, s.cfg.TargetLang, s.cfg.SourceLang)
@@ -173,6 +182,9 @@ func (s *StreamTranslator) Flush() error {
 		return nil
 	}
 	s.writeTextDelta(translated)
+	if s.stats != nil {
+		s.stats.RecordOutput(raw, translated)
+	}
 	return nil
 }
 
