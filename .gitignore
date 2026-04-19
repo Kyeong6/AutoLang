@@ -1,4 +1,5 @@
-# Go
+# Go binaries
+/autolang
 /dist/
 /bin/
 
